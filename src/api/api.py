@@ -1,65 +1,70 @@
-from ai import knnuser as knn
+from ai.knn_user import KNNUser
 from api import xAPIConnector
 
-userId = 11172382
-password = "Somossiete7"
 
+class APIUser:
+    def __init__(self, tickers):
+        self.user_id = 11172382
+        self.password = "Somossiete7"
+        self.tickers = tickers
+        self.knn = KNNUser(tickers)
 
-def close(order, price):
-    client = xAPIConnector.APIClient()
+    def close(self, order, price):
+        client = self.open_connection()
 
-    login_response = client.execute(xAPIConnector.loginCommand(userId=userId, password=password))
-    xAPIConnector.logger.info(str(login_response))
+        resp = client.commandExecute('getTrades', arguments={
+            "openedOnly": True
+        })
 
-    if not login_response['status']:
-        print('Login failed. Error code: {0}'.format(login_response['errorCode']))
+        trade = None
+        for t in resp['returnData']:
+            if t['order2'] == order:
+                trade = t
 
-    resp = client.commandExecute('getTrades', arguments={
-        "openedOnly": True
-    })
+        resp = client.commandExecute('tradeTransaction', arguments={
+            'tradeTransInfo': {
+                "cmd": 0,
+                "order": trade['order'],
+                "price": price,
+                "symbol": trade['symbol'],
+                "type": 2,
+                "volume": trade['volume']
+            }
+        })
 
-    trade = None
-    for t in resp['returnData']:
-        if t['order2'] == order:
-            trade = t
+        client.disconnect()
 
-    resp = client.commandExecute('tradeTransaction', arguments={
-        'tradeTransInfo': {
-            "cmd": 0,
-            "order": trade['order'],
-            "price": price,
-            "symbol": trade['symbol'],
-            "type": 2,
-            "volume": trade['volume']
-        }
-    })
+        return resp
 
-    client.disconnect()
+    def open(self, ticker, price, volume, order_type):
+        if ticker not in self.tickers:
+            raise ValueError('Ticker unavailable')
 
-    return resp
+        client = self.open_connection()
 
+        cmd = 1 - self.knn.predict(ticker)
 
-def open(price, volume, type, symbol):
-    client = xAPIConnector.APIClient()
+        resp = client.commandExecute('tradeTransaction', arguments={
+            'tradeTransInfo': {
+                "cmd": cmd,
+                "price": price,
+                "symbol": ticker,
+                "type": order_type,
+                "volume": volume
+            }
+        })
 
-    login_response = client.execute(xAPIConnector.loginCommand(userId=userId, password=password))
-    xAPIConnector.logger.info(str(login_response))
+        client.disconnect()
 
-    if not login_response['status']:
-        print('Login failed. Error code: {0}'.format(login_response['errorCode']))
+        return resp
 
-    cmd = 1 - knn.predict_today()
+    def open_connection(self):
+        client = xAPIConnector.APIClient()
 
-    resp = client.commandExecute('tradeTransaction', arguments={
-        'tradeTransInfo': {
-            "cmd": cmd,
-            "price": price,
-            "symbol": symbol,
-            "type": type,
-            "volume": volume
-        }
-    })
+        login_response = client.execute(xAPIConnector.loginCommand(userId=self.user_id, password=self.password))
+        xAPIConnector.logger.info(str(login_response))
 
-    client.disconnect()
+        if not login_response['status']:
+            print('Login failed. Error code: {0}'.format(login_response['errorCode']))
 
-    return resp
+        return client
