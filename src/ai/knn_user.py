@@ -8,6 +8,7 @@ from ai.knn_builder import KNNBuilder
 
 class KNNUser:
     def __init__(self, tickers):
+        self.filename = '[KNNUser]'
         KNNBuilder(tickers,
                    datetime(2010, 1, 1),
                    datetime.now(), 4, 10,
@@ -38,15 +39,16 @@ class KNNUser:
                                                      'yahoo',
                                                      start=today.replace(day=today.day - 1),
                                                      end=datetime.now()).to_numpy()
-        print('*** Dataframe read')
+        print(self.filename + ' Dataframe read')
         print(df)
         return df
 
     def predict(self, ticker):
+        self.data = self.read_trickers()
         model = load('../resources/models/' + ticker + 'KNN.joblib')
         x = self.data.loc[ticker].tail(1)[['High', 'Low', 'Close']].to_numpy()
         y = model.predict(x)
         return int(y[0])
 
 
-KNNUser(['^GSPC', 'AAPL']).predict('AAPL')
+# KNNUser(['^GSPC', 'AAPL']).predict('AAPL')

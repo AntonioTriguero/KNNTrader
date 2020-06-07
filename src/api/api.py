@@ -1,13 +1,14 @@
 from ai.knn_user import KNNUser
-from api import xAPIConnector
+from api.wrapper import xAPIConnector
 
 
 class APIUser:
-    def __init__(self, tickers):
+    def __init__(self, symbols):
         self.user_id = 11172382
         self.password = "Somossiete7"
-        self.tickers = tickers
-        self.knn = KNNUser(tickers)
+        self.symbols = symbols
+        self.knn = KNNUser(symbols.keys())
+        self.filename = '[APIUser]'
 
     def close(self, order, price):
         client = self.open_connection()
@@ -21,24 +22,27 @@ class APIUser:
             if t['order2'] == order:
                 trade = t
 
-        resp = client.commandExecute('tradeTransaction', arguments={
-            'tradeTransInfo': {
-                "cmd": 0,
-                "order": trade['order'],
-                "price": price,
-                "symbol": trade['symbol'],
-                "type": 2,
-                "volume": trade['volume']
-            }
-        })
+        try:
+            resp = client.commandExecute('tradeTransaction', arguments={
+                'tradeTransInfo': {
+                    "cmd": 0,
+                    "order": trade['order'],
+                    "price": price,
+                    "symbol": trade['symbol'],
+                    "type": 2,
+                    "volume": trade['volume']
+                }
+            })
+        except TypeError:
+            print('Order ' + str(order) + ' not found')
 
         client.disconnect()
 
         return resp
 
-    def open(self, ticker, price, volume, order_type):
-        if ticker not in self.tickers:
-            raise ValueError('Ticker unavailable')
+    def open(self, ticker):
+        if ticker not in self.symbols.keys():
+            raise ValueError(self.filename + ' Ticker unavailable')
 
         client = self.open_connection()
 
@@ -46,12 +50,18 @@ class APIUser:
 
         resp = client.commandExecute('tradeTransaction', arguments={
             'tradeTransInfo': {
-                "cmd": cmd,
-                "price": price,
-                "symbol": ticker,
-                "type": order_type,
-                "volume": volume
+                'cmd': cmd,
+                'price': 1,
+                'symbol': self.symbols[ticker],
+                'type': 0,
+                'volume': client.commandExecute('getSymbol', arguments={
+                    'symbol': self.symbols[ticker]
+                })['returnData']['lotMin']
             }
+        })
+
+        client.commandExecute('tradeTransactionStatus', arguments={
+            'order': resp['returnData']['order']
         })
 
         client.disconnect()
@@ -65,6 +75,6 @@ class APIUser:
         xAPIConnector.logger.info(str(login_response))
 
         if not login_response['status']:
-            print('Login failed. Error code: {0}'.format(login_response['errorCode']))
+            print(self.filename + ' Login failed. Error code: {0}'.format(login_response['errorCode']))
 
         return client

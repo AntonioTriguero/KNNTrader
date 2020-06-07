@@ -1,4 +1,4 @@
-from datetime import datetime
+from pathlib import Path
 import pandas_datareader.data as web
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
@@ -11,7 +11,8 @@ import numpy as np
 
 class KNNBuilder:
     def __init__(self, tickers, start_date, end_date, max_steps, max_neighbors, x_columns, y_columns, models_path, filename):
-        self.models_path = models_path
+        self.name = '[KNNBuilder]'
+        self.models_path = Path(models_path)
         self.accuary, self.models = [], []
         self.tickers = tickers
         self.filename = filename
@@ -37,19 +38,19 @@ class KNNBuilder:
             df.loc[ticker, columns] = web.DataReader(ticker, 'yahoo', start=start_date, end=end_date).to_numpy()
             df.loc[ticker, 'Diff'] = (df.loc[ticker, 'Close'] - df.loc[ticker, 'Open']).astype('float').to_numpy()
             df.loc[ticker, 'Up'] = (df.loc[ticker, 'Close'] > df.loc[ticker, 'Open']).astype('int').to_numpy()
-        print('*** Dataframe read')
+        print(self.name + ' Dataframe read')
         # print(df)
         return df
 
     def find_best_models(self, max_steps, max_neighbors, x_columns, y_columns):
         self.data = self.extract_historical_data(max_steps, x_columns)
         for ticker in self.tickers:
-            print('*** Analyzing ticker ' + str(ticker))
+            print(self.name + ' Analyzing ticker ' + str(ticker))
             x = self.data.loc[(ticker, slice(None)), slice(x_columns[0] + '-1', None)]
             y = self.data.loc[(ticker, slice(None)), y_columns]
             mean_accuary, models = self.train(x, y, x_columns, max_steps, max_neighbors)
             best_model = self.select_best(models, mean_accuary, max_steps)
-            dump(best_model, self.models_path + ticker + self.filename + '.joblib')
+            dump(best_model, self.models_path / (ticker + self.filename + '.joblib'))
             print()
 
     def extract_historical_data(self, steps_back, columns):
@@ -94,9 +95,9 @@ class KNNBuilder:
         max_accuary = max(aux)
         stps = aux.index(max_accuary) + 1
         ks = max_mean_accuary[aux.index(max_accuary)][0]
-        print('Max accuary: ' + str(max_accuary))
-        print('Neighbors: ' + str(ks))
-        print('Steps: ' + str(stps))
+        print(self.name + ' Max accuary: ' + str(max_accuary))
+        print(self.name + ' Neighbors: ' + str(ks))
+        print(self.name + ' Steps: ' + str(stps))
         self.accuary.append(max_accuary)
         return models[stps - 1][ks - 1]
 

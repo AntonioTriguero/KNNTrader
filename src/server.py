@@ -1,36 +1,48 @@
 from datetime import datetime
 from pause import sleep
-from ai import knnuser as knn
-from api import api
+from api.api import APIUser
 
 
-def open_trade(open_date: datetime):
-    print('[server.py] Opening a trade at ' + str(open_date))
-    sleep_to_date(open_date)
-    return api.open(0.01, 0.01, 1 - knn.predict_today(), 'US500')
+class Server:
+    def __init__(self, symbols):
+        self.symbols = symbols
+        self.api_user = APIUser(symbols)
+        self.resp = []
+        self.filename = '[Server]'
 
+    def open_trade(self, open_date: datetime):
+        print(self.filename + ' Opening a trade at ' + str(open_date))
+        self.sleep_to_date(open_date)
 
-def close_trade(order: int, close_date: datetime):
-    print('[server.py] Closing a trade at ' + str(close_date))
-    sleep_to_date(close_date)
-    return api.close(order, 0.01)
+        for ticker in self.symbols.keys():
+            self.resp.append(self.api_user.open(ticker))
 
+        return self.resp
 
-def sleep_to_date(sleep_date: datetime):
-    diff = (sleep_date - datetime.now()).total_seconds()
-    if diff < 0:
-        raise ValueError('sleep_date is less than today')
-    # print('[server.py] Sleeping to ' + str(sleep_date))
-    sleep(diff)
+    def close_trade(self, close_date: datetime):
+        print(self.filename + ' Closing a trade at ' + str(close_date))
+        self.sleep_to_date(close_date)
+
+        for r in self.resp:
+            self.api_user.close(r['returnData']['order'], 0.01)
+        self.resp = []
+
+    def sleep_to_date(self, sleep_date: datetime):
+        diff = (sleep_date - datetime.now()).total_seconds()
+        if diff < 0:
+            raise ValueError(self.filename + ' sleep_date is less than today')
+        print(self.filename + ' Sleeping to ' + str(sleep_date))
+        sleep(diff)
 
 
 def main():
-    while True:
-        open_date = datetime.now().replace(day=datetime.now().day + 1, hour=9, minute=0)
-        resp = open_trade(open_date)
+    server = Server({'BTC-USD': 'BITCOIN', '^GSPC': 'US500'})
 
-        close_date = open_date.replace(hour=15, minute=50)
-        close_trade(resp['returnData']['order'], close_date)
+    while True:
+        open_date = datetime.now().replace(second=(datetime.now().second + 5) % 60) # datetime.now().replace(day=datetime.now().day + 1, hour=9, minute=0)
+        server.open_trade(open_date)
+        close_date = open_date.replace(second=(open_date.second + 5) % 60) # open_date.replace(hour=15, minute=50)
+        server.close_trade(close_date)
 
 
 if __name__ == "__main__":
