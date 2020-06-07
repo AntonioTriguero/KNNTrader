@@ -1,31 +1,52 @@
-from joblib import load
-import numpy as np
 from datetime import datetime
 import pandas_datareader.data as web
-from sklearn import preprocessing
-import pathlib
+from joblib import load
+import pandas as pd
 
-model = load(str(pathlib.Path().absolute()) + '/ai/KNN.joblib')
+from ai.knn_builder import KNNBuilder
 
 
-def predict_today():
-    steps = 15
+class KNNUser:
+    def __init__(self, tickers):
+        KNNBuilder(tickers,
+                   datetime(2010, 1, 1),
+                   datetime.now(), 4, 10,
+                   ['High', 'Low', 'Close'], ['Up'],
+                   '../resources/models/',
+                   'KNN')
+        self.tickers = tickers
+        self.data = self.read_trickers()
 
-    df = web.DataReader('^GSPC', 'yahoo',
-                        start=datetime(1900, 10, 1),
-                        end=datetime.now())
-    df['Buy'] = (df['Close'] > df['Open']).astype('int')
+    def get_dataframe(self):
+        dates, tickers, columns = [], [], []
+        for ticker in self.tickers:
+            today = datetime.now()
+            df = web.DataReader(ticker, 'yahoo', start=today.replace(day=today.day - 1), end=datetime.now())
+            columns = df.columns.values
+            dates_values = df.index.values
+            tickers.extend([ticker] * len(dates_values))
+            dates.extend(dates_values)
+        index = pd.MultiIndex.from_arrays([tickers, dates], names=['Ticker', 'Date'])
+        return pd.DataFrame(index=index, columns=columns)
 
-    for i in range(1, steps):
-        df['Close-' + str(i)] = df['Close'].shift(periods=i, fill_value=0.0)
-        df['High-' + str(i)] = df['High'].shift(periods=i, fill_value=0.0)
-        df['Low-' + str(i)] = df['Low'].shift(periods=i, fill_value=0.0)
-    df = df.iloc[steps:]
+    def read_trickers(self):
+        df = self.get_dataframe()
+        columns = df.columns
+        for ticker in self.tickers:
+            today = datetime.now()
+            df.loc[ticker, columns] = web.DataReader(ticker,
+                                                     'yahoo',
+                                                     start=today.replace(day=today.day - 1),
+                                                     end=datetime.now()).to_numpy()
+        print('*** Dataframe read')
+        print(df)
+        return df
 
-    columns = ['Close', 'High', 'Low']
-    for i in range(1, steps):
-        columns += ['Close-' + str(i), 'High-' + str(i), 'Low-' + str(i)]
-    x = np.asarray(df.iloc[-1:][columns])
-    x = preprocessing.StandardScaler().fit(x).transform(x)
+    def predict(self, ticker):
+        model = load('../resources/models/' + ticker + 'KNN.joblib')
+        x = self.data.loc[ticker].tail(1)[['High', 'Low', 'Close']].to_numpy()
+        y = model.predict(x)
+        return int(y[0])
 
-    return int(model.predict(x)[0])
+
+KNNUser(['^GSPC', 'AAPL']).predict('AAPL')
