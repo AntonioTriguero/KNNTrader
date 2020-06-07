@@ -1,5 +1,3 @@
-import logging
-
 from ai.knn_user import KNNUser
 from api.wrapper import xAPIConnector
 from logger.logger import init_logger

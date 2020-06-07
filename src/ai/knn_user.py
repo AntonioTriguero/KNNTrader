@@ -1,6 +1,5 @@
-import logging
 from datetime import datetime
-import pandas_datareader.data as web
+import pandas_datareader as pdr
 from joblib import load
 import pandas as pd
 from ai.knn_builder import KNNBuilder
@@ -25,7 +24,7 @@ class KNNUser:
         dates, tickers, columns = [], [], []
         for ticker in self.tickers:
             today = datetime.now()
-            df = web.DataReader(ticker, 'yahoo', start=today.replace(day=today.day - 1), end=datetime.now())
+            df = pdr.get_data_yahoo(ticker, start=today.replace(day=today.day - 3), end=datetime.now())
             columns = df.columns.values
             dates_values = df.index.values
             tickers.extend([ticker] * len(dates_values))
@@ -38,10 +37,9 @@ class KNNUser:
         columns = df.columns
         for ticker in self.tickers:
             today = datetime.now()
-            df.loc[ticker, columns] = web.DataReader(ticker,
-                                                     'yahoo',
-                                                     start=today.replace(day=today.day - 1),
-                                                     end=datetime.now()).to_numpy()
+            df.loc[ticker, columns] = pdr.get_data_yahoo(ticker,
+                                                         start=today.replace(day=today.day - 3),
+                                                         end=datetime.now()).to_numpy()
         logger.info('Dataframe read')
         logger.info(df)
         return df
@@ -52,6 +50,3 @@ class KNNUser:
         x = self.data.loc[ticker].tail(1)[['High', 'Low', 'Close']].to_numpy()
         y = model.predict(x)
         return int(y[0])
-
-
-# KNNUser(['^GSPC', 'AAPL']).predict('AAPL')

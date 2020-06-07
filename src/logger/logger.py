@@ -1,6 +1,8 @@
 import logging
+import os
 import colorlog
 
+dirname = os.path.dirname(__file__)
 
 def init_logger(dunder_name, testing_mode) -> logging.Logger:
     log_format = (
@@ -25,21 +27,21 @@ def init_logger(dunder_name, testing_mode) -> logging.Logger:
         logger.setLevel(logging.INFO)
 
     # Output full log
-    fh = logging.FileHandler('app.log')
+    fh = logging.FileHandler(os.path.join(dirname, 'app.log'))
     fh.setLevel(logging.DEBUG)
     formatter = logging.Formatter(log_format)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
     # Output warning log
-    fh = logging.FileHandler('app.warning.log')
+    fh = logging.FileHandler(os.path.join(dirname, 'app.warning.log'))
     fh.setLevel(logging.WARNING)
     formatter = logging.Formatter(log_format)
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
     # Output error log
-    fh = logging.FileHandler('app.error.log')
+    fh = logging.FileHandler(os.path.join(dirname, 'app.error.log'))
     fh.setLevel(logging.ERROR)
     formatter = logging.Formatter(log_format)
     fh.setFormatter(formatter)

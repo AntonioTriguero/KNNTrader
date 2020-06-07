@@ -1,5 +1,5 @@
 from pathlib import Path
-import pandas_datareader.data as web
+import pandas_datareader as pdr
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
@@ -8,7 +8,9 @@ from joblib import dump
 import pandas as pd
 import numpy as np
 from logger.logger import init_logger
+import yfinance as yf
 
+yf.pdr_override()
 logger = init_logger(__name__, testing_mode=False)
 
 
@@ -25,7 +27,7 @@ class KNNBuilder:
     def get_dataframe(self, start_date, end_date):
         dates, tickers, columns = [], [], []
         for ticker in self.tickers:
-            df = web.DataReader(ticker, 'yahoo', start=start_date, end=end_date)
+            df = pdr.get_data_yahoo(ticker, start=start_date, end=end_date)
             columns = df.columns.values
             dates_values = df.index.values
             tickers.extend([ticker] * len(dates_values))
@@ -38,7 +40,7 @@ class KNNBuilder:
         columns = df.columns
         df.insert(len(df.columns), "Up", np.random.randn(len(df.index)), True)
         for ticker in self.tickers:
-            df.loc[ticker, columns] = web.DataReader(ticker, 'yahoo', start=start_date, end=end_date).to_numpy()
+            df.loc[ticker, columns] = pdr.get_data_yahoo(ticker, start=start_date, end=end_date).to_numpy()
             df.loc[ticker, 'Diff'] = (df.loc[ticker, 'Close'] - df.loc[ticker, 'Open']).astype('float').to_numpy()
             df.loc[ticker, 'Up'] = (df.loc[ticker, 'Close'] > df.loc[ticker, 'Open']).astype('int').to_numpy()
         return df
@@ -100,28 +102,3 @@ class KNNBuilder:
         logger.info('Steps: ' + str(stps))
         self.accuary.append(max_accuary)
         return models[stps - 1][ks - 1]
-
-
-'''
-def check_models():
-    n = 10
-    tickers = ['^GSPC', 'AAPL']
-    actual_accuary = [0] * len(tickers)
-    models = [None] * len(tickers)
-    for year in range(1900, datetime.now().year, n):
-        print('--- Models for start year ' + str(year))
-
-        knn = KNNBuilder(tickers,
-                         datetime(year, 1, 1),
-                         datetime.now(), 4, 10,
-                         ['High', 'Low', 'Close'], ['Up'],
-                         '../resources/modules/',
-                         'KNN' + str(year))
-
-        for i in range(0, len(knn.accuary)):
-            if actual_accuary[i] < knn.accuary[i]:
-                actual_accuary[i] = knn.accuary[i]
-                models[i] = knn.models[i]
-
-    print('Total accuary = ' + str(actual_accuary))
-'''
