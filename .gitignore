@@ -1,3 +1,6 @@
 env
 .idea
 KNNTrader.iml
+/src/logger/app.error.log
+/src/logger/app.log
+/src/logger/app.warning.log

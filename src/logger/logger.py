@@ -4,6 +4,7 @@ import colorlog
 
 dirname = os.path.dirname(__file__)
 
+
 def init_logger(dunder_name, testing_mode) -> logging.Logger:
     log_format = (
         '%(asctime)s - '

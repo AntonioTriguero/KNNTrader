@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime
 from pause import sleep
 from api.api import APIUser
@@ -6,8 +7,9 @@ from logger.logger import init_logger
 logger = init_logger(__name__, testing_mode=False)
 
 
-class Server:
+class Server(threading.Thread):
     def __init__(self, symbols):
+        super().__init__()
         self.symbols = symbols
         self.api_user = APIUser(symbols)
         self.resp = []
@@ -38,16 +40,10 @@ class Server:
         logger.info('Sleeping to ' + str(sleep_date))
         sleep(diff)
 
-
-def main():
-    server = Server({'^GSPC': 'US500', '^STOXX50E': 'EU50'})
-
-    while True:
-        open_date = datetime.now().replace(day=datetime.now().day + 1, hour=9, minute=0)
-        server.open_trade(open_date)
-        close_date = open_date.replace(hour=15, minute=50)
-        server.close_trade(close_date)
-
-
-if __name__ == "__main__":
-    main()
+    def run(self):
+        t = threading.currentThread()
+        while getattr(t, "do_run", True):
+            open_date = datetime.now().replace(day=datetime.now().day + 1, hour=9, minute=0)
+            self.open_trade(open_date)
+            close_date = open_date.replace(hour=15, minute=50)
+            self.close_trade(close_date)

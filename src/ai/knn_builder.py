@@ -1,4 +1,6 @@
 from pathlib import Path
+from time import sleep
+
 import pandas_datareader as pdr
 from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
@@ -10,7 +12,7 @@ import numpy as np
 from logger.logger import init_logger
 import yfinance as yf
 
-yf.pdr_override()
+#yf.pdr_override()
 logger = init_logger(__name__, testing_mode=False)
 
 
@@ -23,6 +25,7 @@ class KNNBuilder:
         self.filename = filename
         self.data = self.read_trickers(start_date, end_date)
         self.find_best_models(max_steps, max_neighbors, x_columns, y_columns)
+        self.do_run = True
 
     def get_dataframe(self, start_date, end_date):
         dates, tickers, columns = [], [], []
@@ -40,7 +43,7 @@ class KNNBuilder:
         columns = df.columns
         df.insert(len(df.columns), "Up", np.random.randn(len(df.index)), True)
         for ticker in self.tickers:
-            df.loc[ticker, columns] = pdr.get_data_yahoo(ticker, start=start_date, end=end_date).to_numpy()
+            df.loc[ticker, columns] = pdr.data.DataReader(ticker, 'yahoo', start=start_date, end=end_date).to_numpy()
             df.loc[ticker, 'Diff'] = (df.loc[ticker, 'Close'] - df.loc[ticker, 'Open']).astype('float').to_numpy()
             df.loc[ticker, 'Up'] = (df.loc[ticker, 'Close'] > df.loc[ticker, 'Open']).astype('int').to_numpy()
         return df

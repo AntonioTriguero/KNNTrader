@@ -24,7 +24,7 @@ class KNNUser:
         dates, tickers, columns = [], [], []
         for ticker in self.tickers:
             today = datetime.now()
-            df = pdr.get_data_yahoo(ticker, start=today.replace(day=today.day - 3), end=datetime.now())
+            df = pdr.data.DataReader(ticker, 'yahoo', start=today.replace(day=today.day - 3), end=datetime.now())
             columns = df.columns.values
             dates_values = df.index.values
             tickers.extend([ticker] * len(dates_values))
@@ -37,9 +37,9 @@ class KNNUser:
         columns = df.columns
         for ticker in self.tickers:
             today = datetime.now()
-            df.loc[ticker, columns] = pdr.get_data_yahoo(ticker,
-                                                         start=today.replace(day=today.day - 3),
-                                                         end=datetime.now()).to_numpy()
+            df.loc[ticker, columns] = pdr.data.DataReader(ticker, 'yahoo',
+                                                          start=today.replace(day=today.day - 3),
+                                                          end=datetime.now()).to_numpy()
         logger.info('Dataframe read')
         logger.info(df)
         return df
