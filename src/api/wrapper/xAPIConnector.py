@@ -6,6 +6,8 @@ import ssl
 from threading import Thread
 
 # set to true on debug environment only
+from logger.logger import init_logger
+
 DEBUG = True
 
 #default connection properites
@@ -24,9 +26,7 @@ API_SEND_TIMEOUT = 100
 API_MAX_CONN_TRIES = 3
 
 # logger properties
-logger = logging.getLogger("jsonSocket")
-FORMAT = '[%(asctime)-15s][%(funcName)s:%(lineno)d] %(message)s'
-logging.basicConfig(format=FORMAT)
+logger = init_logger(__name__, testing_mode=False)
 
 if DEBUG:
     logger.setLevel(logging.DEBUG)
@@ -41,7 +41,7 @@ class TransactionSide(object):
     SELL_LIMIT = 3
     BUY_STOP = 4
     SELL_STOP = 5
-    
+
 class TransactionType(object):
     ORDER_OPEN = 0
     ORDER_CLOSE = 2
@@ -50,7 +50,7 @@ class TransactionType(object):
 
 class JsonSocket(object):
     def __init__(self, address, port, encrypt = False):
-        self._ssl = encrypt 
+        self._ssl = encrypt
         if self._ssl != True:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         else:
@@ -153,8 +153,8 @@ class JsonSocket(object):
     address = property(_get_address, _set_address, doc='read only property socket address')
     port = property(_get_port, _set_port, doc='read only property socket port')
     encrypt = property(_get_encrypt, _set_encrypt, doc='read only property socket port')
-    
-    
+
+
 class APIClient(JsonSocket):
     def __init__(self, address=DEFAULT_XAPI_ADDRESS, port=DEFAULT_XAPI_PORT, encrypt=True):
         super(APIClient, self).__init__(address, port, encrypt)
@@ -163,16 +163,16 @@ class APIClient(JsonSocket):
 
     def execute(self, dictionary):
         self._sendObj(dictionary)
-        return self._readObj()    
+        return self._readObj()
 
     def disconnect(self):
         self.close()
-        
+
     def commandExecute(self,commandName, arguments=None):
         return self.execute(baseCommand(commandName, arguments))
 
 class APIStreamClient(JsonSocket):
-    def __init__(self, address=DEFAULT_XAPI_ADDRESS, port=DEFUALT_XAPI_STREAMING_PORT, encrypt=True, ssId=None, 
+    def __init__(self, address=DEFAULT_XAPI_ADDRESS, port=DEFUALT_XAPI_STREAMING_PORT, encrypt=True, ssId=None,
                  tickFun=None, tradeFun=None, balanceFun=None, tradeStatusFun=None, profitFun=None, newsFun=None):
         super(APIStreamClient, self).__init__(address, port, encrypt)
         self._ssId = ssId
@@ -183,7 +183,7 @@ class APIStreamClient(JsonSocket):
         self._tradeStatusFun = tradeStatusFun
         self._profitFun = profitFun
         self._newsFun = newsFun
-        
+
         if(not self.connect()):
             raise Exception("Cannot connect to streaming on " + address + ":" + str(port) + " after " + str(API_MAX_CONN_TRIES) + " retries")
 
@@ -208,7 +208,7 @@ class APIStreamClient(JsonSocket):
                     self._profitFun(msg)
                 elif (msg["command"]=="news"):
                     self._newsFun(msg)
-    
+
     def disconnect(self):
         self._running = False
         self._t.join()
@@ -219,14 +219,14 @@ class APIStreamClient(JsonSocket):
 
     def subscribePrice(self, symbol):
         self.execute(dict(command='getTickPrices', symbol=symbol, streamSessionId=self._ssId))
-        
+
     def subscribePrices(self, symbols):
         for symbolX in symbols:
             self.subscribePrice(symbolX)
-    
+
     def subscribeTrades(self):
         self.execute(dict(command='getTrades', streamSessionId=self._ssId))
-        
+
     def subscribeBalance(self):
         self.execute(dict(command='getBalance', streamSessionId=self._ssId))
 
@@ -242,14 +242,14 @@ class APIStreamClient(JsonSocket):
 
     def unsubscribePrice(self, symbol):
         self.execute(dict(command='stopTickPrices', symbol=symbol, streamSessionId=self._ssId))
-        
+
     def unsubscribePrices(self, symbols):
         for symbolX in symbols:
             self.unsubscribePrice(symbolX)
-    
+
     def unsubscribeTrades(self):
         self.execute(dict(command='stopTrades', streamSessionId=self._ssId))
-        
+
     def unsubscribeBalance(self):
         self.execute(dict(command='stopBalance', streamSessionId=self._ssId))
 
@@ -275,29 +275,29 @@ def loginCommand(userId, password, appName=''):
 
 
 # example function for processing ticks from Streaming socket
-def procTickExample(msg): 
+def procTickExample(msg):
     print("TICK: ", msg)
 
 # example function for processing trades from Streaming socket
-def procTradeExample(msg): 
+def procTradeExample(msg):
     print("TRADE: ", msg)
 
 # example function for processing trades from Streaming socket
-def procBalanceExample(msg): 
+def procBalanceExample(msg):
     print("BALANCE: ", msg)
 
 # example function for processing trades from Streaming socket
-def procTradeStatusExample(msg): 
+def procTradeStatusExample(msg):
     print("TRADE STATUS: ", msg)
 
 # example function for processing trades from Streaming socket
-def procProfitExample(msg): 
+def procProfitExample(msg):
     print("PROFIT: ", msg)
 
 # example function for processing news from Streaming socket
-def procNewsExample(msg): 
+def procNewsExample(msg):
     print("NEWS: ", msg)
-    
+
 
 def main():
 
@@ -307,10 +307,10 @@ def main():
 
     # create & connect to RR socket
     client = APIClient()
-    
+
     # connect to RR socket, login
     loginResponse = client.execute(loginCommand(userId=userId, password=password))
-    logger.info(str(loginResponse)) 
+    logger.info(str(loginResponse))
 
     # check if user logged in correctly
     if(loginResponse['status'] == False):
@@ -319,17 +319,17 @@ def main():
 
     # get ssId from login response
     ssid = loginResponse['streamSessionId']
-    
+
     # second method of invoking commands
     resp = client.commandExecute('getAllSymbols')
-    
+
     # create & connect to Streaming socket with given ssID
     # and functions for processing ticks, trades, profit and tradeStatus
     sclient = APIStreamClient(ssId=ssid, tickFun=procTickExample, tradeFun=procTradeExample, profitFun=procProfitExample, tradeStatusFun=procTradeStatusExample)
-    
+
     # subscribe for trades
     sclient.subscribeTrades()
-    
+
     # subscribe for prices
     sclient.subscribePrices(['EURUSD', 'EURGBP', 'EURJPY'])
 
@@ -338,13 +338,13 @@ def main():
 
     # this is an example, make it run for 5 seconds
     time.sleep(5)
-    
+
     # gracefully close streaming socket
     sclient.disconnect()
-    
+
     # gracefully close RR socket
     client.disconnect()
-    
-    
+
+
 if __name__ == "__main__":
-    main()	
+    main()

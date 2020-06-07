@@ -7,6 +7,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from joblib import dump
 import pandas as pd
 import numpy as np
+from logger.logger import init_logger
+
+logger = init_logger(__name__, testing_mode=False)
 
 
 class KNNBuilder:
@@ -38,20 +41,17 @@ class KNNBuilder:
             df.loc[ticker, columns] = web.DataReader(ticker, 'yahoo', start=start_date, end=end_date).to_numpy()
             df.loc[ticker, 'Diff'] = (df.loc[ticker, 'Close'] - df.loc[ticker, 'Open']).astype('float').to_numpy()
             df.loc[ticker, 'Up'] = (df.loc[ticker, 'Close'] > df.loc[ticker, 'Open']).astype('int').to_numpy()
-        print(self.name + ' Dataframe read')
-        # print(df)
         return df
 
     def find_best_models(self, max_steps, max_neighbors, x_columns, y_columns):
         self.data = self.extract_historical_data(max_steps, x_columns)
         for ticker in self.tickers:
-            print(self.name + ' Analyzing ticker ' + str(ticker))
+            logger.info('Analyzing ticker ' + str(ticker))
             x = self.data.loc[(ticker, slice(None)), slice(x_columns[0] + '-1', None)]
             y = self.data.loc[(ticker, slice(None)), y_columns]
             mean_accuary, models = self.train(x, y, x_columns, max_steps, max_neighbors)
             best_model = self.select_best(models, mean_accuary, max_steps)
             dump(best_model, self.models_path / (ticker + self.filename + '.joblib'))
-            print()
 
     def extract_historical_data(self, steps_back, columns):
         for ticker in self.tickers:
@@ -95,9 +95,9 @@ class KNNBuilder:
         max_accuary = max(aux)
         stps = aux.index(max_accuary) + 1
         ks = max_mean_accuary[aux.index(max_accuary)][0]
-        print(self.name + ' Max accuary: ' + str(max_accuary))
-        print(self.name + ' Neighbors: ' + str(ks))
-        print(self.name + ' Steps: ' + str(stps))
+        logger.info('Max accuary: ' + str(max_accuary))
+        logger.info('Neighbors: ' + str(ks))
+        logger.info('Steps: ' + str(stps))
         self.accuary.append(max_accuary)
         return models[stps - 1][ks - 1]
 

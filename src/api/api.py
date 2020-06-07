@@ -1,5 +1,10 @@
+import logging
+
 from ai.knn_user import KNNUser
 from api.wrapper import xAPIConnector
+from logger.logger import init_logger
+
+logger = init_logger(__name__, testing_mode=False)
 
 
 class APIUser:
@@ -34,7 +39,7 @@ class APIUser:
                 }
             })
         except TypeError:
-            print('Order ' + str(order) + ' not found')
+            logger.error('Order ' + str(order) + ' not found')
 
         client.disconnect()
 

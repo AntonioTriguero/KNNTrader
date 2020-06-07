@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime
 import pandas_datareader.data as web
 from joblib import load
 import pandas as pd
-
 from ai.knn_builder import KNNBuilder
+from logger.logger import init_logger
+
+logger = init_logger(__name__, testing_mode=False)
 
 
 class KNNUser:
@@ -39,8 +42,8 @@ class KNNUser:
                                                      'yahoo',
                                                      start=today.replace(day=today.day - 1),
                                                      end=datetime.now()).to_numpy()
-        print(self.filename + ' Dataframe read')
-        print(df)
+        logger.info('Dataframe read')
+        logger.info(df)
         return df
 
     def predict(self, ticker):

@@ -1,3 +1,4 @@
+colorlog
 certifi==2020.4.5.1
 chardet==3.0.4
 fix-yahoo-finance==0.1.37
