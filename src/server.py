@@ -43,7 +43,7 @@ class Server(threading.Thread):
     def run(self):
         t = threading.currentThread()
         while getattr(t, "do_run", True):
-            open_date = datetime.now().replace(day=datetime.now().day + 1, hour=9, minute=0)
+            open_date = datetime.now().replace(second=datetime.now().second + 5)# datetime.now().replace(day=datetime.now().day + 1, hour=9, minute=0)
             self.open_trade(open_date)
-            close_date = open_date.replace(hour=15, minute=50)
+            close_date = datetime.now().replace(second=datetime.now().second + 5) # open_date.replace(hour=15, minute=50)
             self.close_trade(close_date)
