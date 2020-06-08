@@ -1,5 +1,5 @@
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pause import sleep
 from ai.knn.knn_user import KNNUser
 from api.api import APIUser
@@ -58,7 +58,7 @@ class Bot(threading.Thread):
     def test(self):
         t = threading.currentThread()
         while getattr(t, "do_run", True):
-            open_date = datetime.now().replace(second=datetime.now().second + 5)
+            open_date = datetime.now() + timedelta(seconds=5)
             self.open_trade(open_date)
-            close_date = datetime.now().replace(second=datetime.now().second + 5)
+            close_date = datetime.now() + timedelta(seconds=5)
             self.close_trade(close_date)
