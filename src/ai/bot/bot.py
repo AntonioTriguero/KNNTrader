@@ -39,18 +39,20 @@ class Bot(threading.Thread):
         sleep(diff)
 
     def run(self):
-        self.test()
-        # self.prod()
+        # self.test()
+        self.prod()
 
     def prod(self):
         t = threading.currentThread()
         while getattr(t, "do_run", True):
             open_date = datetime.now().replace(day=datetime.now().day + 1,
                                                hour=self.start_date.hour,
-                                               minute=self.start_date.minute)
+                                               minute=self.start_date.minute,
+                                               second=self.start_date.second)
             self.open_trade(open_date)
             close_date = open_date.replace(hour=self.end_date.hour,
-                                           minute=self.end_date.minute)
+                                           minute=self.end_date.minute,
+                                           second=self.end_date.second)
             self.close_trade(close_date)
 
     def test(self):
@@ -60,12 +62,3 @@ class Bot(threading.Thread):
             self.open_trade(open_date)
             close_date = datetime.now().replace(second=datetime.now().second + 5)
             self.close_trade(close_date)
-
-
-bot = Bot('^GSPC',
-          'US500',
-          datetime.now().replace(hour=9, minute=0, second=0),
-          datetime.now().replace(hour=16, minute=0, second=0),
-          ['Open', 'High', 'Low', 'Close', 'Volume'],
-          './^GSPCKNN.joblib')
-bot.run()
