@@ -1,6 +1,4 @@
 from datetime import datetime
-from random import randint
-
 from flask import Flask, request
 from ai.bot.bot import Bot
 
