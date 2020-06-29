@@ -3,11 +3,11 @@ from datetime import datetime
 from threading import Thread
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras import models, layers
+from tensorflow.keras import models, layers, callbacks
 import numpy as np
 import matplotlib.pyplot as plt
 from pandas import read_csv
-from tensorflow.python.keras import regularizers
+from tensorflow.python.keras import regularizers, optimizers
 from joblib import dump
 
 data_path = './data/'
@@ -36,12 +36,13 @@ class NNBuilder(Thread):
         ticker_data_path = data_path + self.ticker + '/' + startdate + enddate + '.csv'
         data_columns = ['High', 'Open', 'Close', 'Low', 'Volume', 'Dividends', 'Stock Splits']
 
-        if not os.path.exists(ticker_data_path):
+        '''if not os.path.exists(ticker_data_path):
             df = yf.Ticker(self.ticker).history(start=startdate,
                                                 end=enddate)
             df.to_csv(ticker_data_path)
         else:
-            df = read_csv(ticker_data_path).set_index('Date')
+            df = read_csv(ticker_data_path).set_index('Date')'''
+        df = read_csv('./data/^GSPC/1980-01-012020-01-01.csv').set_index('Date')
 
         self.columns = sorted(self.columns, key=lambda e: list(df.columns).index(e))
         for s in range(1, self.steps + 1):
@@ -78,7 +79,7 @@ class NNBuilder(Thread):
 
         scaler = MinMaxScaler()
         scaler.fit(train)
-        dump(scaler, scaler_path)
+        # dump(scaler, scaler_path)
         train = scaler.transform(train)
         test = scaler.transform(test)
 
@@ -119,17 +120,64 @@ class NNBuilder(Thread):
         model = self.model()
         partial_x_train, partial_y_train, x_val, y_val, x_test, y_test = self.split_and_normalize_data(df)
 
+        callbacks_list = [
+            callbacks.ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=0.1,
+                patience=10
+            )
+        ]
         history = model.fit(partial_x_train,
                             partial_y_train,
                             epochs=self.epochs,
                             validation_data=(x_val, y_val),
-                            batch_size=self.steps)
+                            batch_size=self.steps,
+                            callbacks=callbacks_list,
+                            optimizer=optimizers.RMSprop(lr=0.05))
         self.plot_train_loss(history)
 
         results = model.predict(x_test)
         self.plot_test_loss(results, y_test)
 
-        model.save(nn_path)
+        # model.save(nn_path)
+
+    def profit(self, model, scaler):
+        d = self.data(startdate=datetime(2020, 1, 1).strftime('%Y-%m-%d'))
+
+        y = d.iloc[:, -1:]
+
+        ds = scaler.transform(d)
+        xs = np.reshape(ds[:, :-1], (ds[:, :-1].shape[0], 1, ds[:, :-1].shape[1]))
+
+        ys_ = model.predict(xs)
+        y_ = scaler.inverse_transform(np.concatenate((np.zeros((len(ys_), xs.shape[2])), ys_[:, :, 0]), axis=1))[:, -1:]
+        d['Diff'] = (y_ - d['Close'].to_numpy().reshape(-1, 1)) * 0.5
+        d['Pred'] = (d['Close'] + d['Diff']).to_numpy().reshape(-1, 1)
+
+        evolution = []
+        for index, row in d.iterrows():
+            margin = 0
+            open = row['Open']
+            close = row['Close']
+            pred = row['Pred']
+
+            max_profit = close - open
+            profit = pred - open
+
+            if (max_profit < 0 and profit < 0) or (max_profit > 0 and profit > 0):
+                max_profit = abs(max_profit)
+                profit = abs(profit)
+                if max_profit < profit:
+                    margin += max_profit
+                else:
+                    margin += profit
+            else:
+                margin -= abs(max_profit)
+            evolution.append(margin)
+
+        plt.plot(range(len(evolution)),
+                 np.cumsum(evolution))
+        plt.show()
 
 
 def generate(steps,
@@ -141,3 +189,6 @@ def generate(steps,
             t = NNBuilder(['High', 'Open', 'Low', 'Close', 'Volume'], ticker, steps=s, epochs=epochs)
             t.start()
             t.join()
+
+
+# generate([7], 1, 50)

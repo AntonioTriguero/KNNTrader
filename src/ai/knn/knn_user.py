@@ -1,4 +1,4 @@
-import pandas_datareader as pdr
+import yfinance as yf
 from datetime import datetime
 from joblib import load
 from ai.knn.knn_builder import KNNBuilder
@@ -12,19 +12,22 @@ class KNNUser:
         self.ticker = ticker
         self.model = load(model_path)
         self.x_columns = x_columns
+        self.batch = 10
 
     def get_ticker(self):
         today = datetime.now()
-        return pdr.data.DataReader(self.ticker,
-                                   data_source='yahoo',
-                                   start=today.replace(day=today.day - 5),
-                                   end=datetime.now())
+        return yf.Ticker(self.ticker).history(start=today.replace(month=today.month - 1))
 
     def clean(self, df):
-        return (df - df.shift(periods=1)).shift(periods=1).dropna().tail(1)
+        global data
+        data = (df - df.shift(periods=1)).shift(periods=1).dropna()
+        for i in range(0, self.batch):
+            data = (data - data.shift(periods=1)).dropna()
+        return data.tail(1)
 
     def predict(self):
         data = self.get_ticker()
         data = self.clean(data)
+        print(data)
         y_ = self.model.predict(data[self.x_columns])
         return y_[0]
