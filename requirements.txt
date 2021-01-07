@@ -19,7 +19,7 @@ itsdangerous==1.1.0
 Jinja2==2.11.2
 joblib==0.15.1
 Keras-Preprocessing==1.1.2
-lxml==4.5.1
+lxml==4.6.2
 Markdown==3.2.2
 MarkupSafe==1.1.1
 multitasking==0.0.9
